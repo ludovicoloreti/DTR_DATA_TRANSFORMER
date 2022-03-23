@@ -1,0 +1,26 @@
+{
+  "name": "dtr-data-transformer",
+  "version": "1.0.0",
+  "description": "Takes log text files as data input. Gives back JSON and CSV files divided as \"shallow\" and \"deep\" files.",
+  "main": "docker_scan_transformer.js",
+  "scripts": {
+    "run": "node docker_scan_transformer.js "
+  },
+  "keywords": [
+    "Docker",
+    "Scan",
+    "DTR",
+    "data",
+    "transformation",
+    "json",
+    "csv",
+    "javascript"
+  ],
+  "author": "Ludovico Loreti",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "json-2-csv": "^3.17.0",
+    "n-readlines": "^1.0.1"
+  }
+}
