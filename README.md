@@ -1,6 +1,7 @@
 # DTR DATA TRANSFORMER
 
 Transform text reports by DTR scan (`docker scan`) in JSON and CSV; 
+
 The `docker scan` with the `--json` tag will not have all the data inside but only the shallow data.
 Here you can find Shallow and Deep data:
 -  The first is what the DTR finds scanning the surface of the docker image; 
