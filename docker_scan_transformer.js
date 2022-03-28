@@ -33,7 +33,7 @@ while (currLine = broadbandLines.next()) {
   const line = currLine.toString('utf-8').trim();
   let match;
   if ((match = line.match(/^\S+ (Medium|Low|High|Critical) severity vulnerability found in (.+)/))) {
-    shallowVuln = { package: match[2], severity: match[1] };
+    shallowVuln = { package: match[2], CVE: undefined, severity: match[1], CVSS: undefined };
     shallowVulns.push(shallowVuln);
   } else if ((match = line.match(/^(Description|Info|Introduced through|From): (.+)/))) {
     shallowVuln[toSnakeCase((match[1] === "Info" ? "reference" : match[1]))] = match[2];
@@ -69,7 +69,9 @@ while (currLine = broadbandLines.next()) {
             const [fixed_name, fixed_version] = to.split('@');
             return vulnerabilities.map(vuln => ({
               name: vuln.name,
+              CVE: undefined,
               severity: vuln.severity,
+              CVSS: undefined,
               mitigation: `Upgrade ${from} to ${to}`,
               reference: vuln.reference,
               fixable: true,
@@ -88,7 +90,9 @@ while (currLine = broadbandLines.next()) {
             const [packageName, version] = vuln.package.split('@');
             return {
               name: vuln.name,
+              CVE: undefined,
               severity: vuln.severity,
+              CVSS: undefined,
               mitigation: 'N/A',
               reference: vuln.reference,
               fixable: false,
@@ -191,6 +195,8 @@ deepVulns.forEach(element => {
   element.vulnerabilities.forEach(el => {
     deepCSVArray.push({
       target_file: element.target_file,
+      CVE: (typeof el.CVE != "undefined" && el.CVE != null && el.CVE.length != null && el.CVE.length > 0) ? el.CVE.join(' - ') : 'N/A',
+      CVSS: el.CVSS || 'N/A',
       fixable: el.fixable,
       vulnerability_name: el.name,
       vulnerability_severity: el.severity,
@@ -198,9 +204,7 @@ deepVulns.forEach(element => {
       package_vuln_version: el.package.vulnerable_version,
       package_fix_version: el.package.fixed_version,
       mitigation: el.mitigation,
-      reference: el.reference,
-      CVE: (typeof el.CVE != "undefined" && el.CVE != null && el.CVE.length != null && el.CVE.length > 0) ? el.CVE.join(' - ') : 'N/A',
-      CVSS: el.CVSS || 'N/A'
+      reference: el.reference
     })
   })
 });
