@@ -1,3 +1,9 @@
+# exclude everything
+export/*
+
+# exception to the rule
+!export/.gitkeep 
+
 # Logs
 logs
 *.log

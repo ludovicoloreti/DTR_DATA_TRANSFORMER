@@ -1,6 +1,8 @@
-const fs = require('fs');
-const nReadlines = require('n-readlines');
-const converter = require('json-2-csv');
+import converter from 'json-2-csv';
+import fetch from 'node-fetch';
+import fs from "fs";
+import nReadlines from 'n-readlines';
+
 const args = process.argv.slice(2);
 function showMsg() {
   console.error("Input inserted: ", args, "\n");
@@ -113,12 +115,38 @@ while (currLine = broadbandLines.next()) {
   }
 }
 
-const used = process.memoryUsage().heapUsed / 1024 / 1024;
-console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
+// Add CVE to all vulns
+const dtrAllReferences = [...new Set([...deepVulns.flatMap(el => el.vulnerabilities.map(vuln => vuln.reference)), ...shallowVulns.map(el => el.reference)])].filter(e => e).flatMap(e => e);
+let dtrCVEs = [];
 
+async function getBody(url) {
+  const response = await fetch(url,{
+      redirect: 'follow',
+      follow: 10,
+  })
+  const text = await response.text()
+  return text
+}
+
+for(const url of dtrAllReferences) {
+  const body = await getBody(url).catch(err => console.error("ERROR with this url -> " + url + ": ", err));
+  dtrCVEs.push({CVE: [...new Set(body.match(/CVE-\d{4}-\d{4,7}/g))], reference: url})
+}
+
+dtrCVEs.map(el => {
+  deepVulns.map(deep => deep.vulnerabilities.map(d => {
+    if (d.reference === el.reference) {
+      d['CVE'] = el.CVE;
+    }
+  }))
+  shallowVulns.map(s => {
+    if (s.reference === el.reference) {
+      s['CVE'] = el.CVE
+    }
+  })
+})
 
 // Order arrays by vuln severity
-
 const keyOrder ={
   "Critical": 1,
   "High": 2,
@@ -128,23 +156,25 @@ const keyOrder ={
 };
 deepVulns.map(el => el.vulnerabilities.sort((a,b) => (keyOrder[a.severity] || order.default) - (keyOrder[b.severity] || order.default)));
 shallowVulns.sort((a,b) => (keyOrder[a.severity] || order.default) - (keyOrder[b.severity] || order.default));
+
 // Write JSON to files *.json
 const folderToWrite = "./export/";
 const fileToWrite = fileName.split('/');
 const finalDestination = fileToWrite[fileToWrite.length - 1]
 
-// DEEP JSON FILE
-fs.writeFileSync(folderToWrite + 'deep_' + finalDestination + '.json', JSON.stringify(deepVulns, null, 2), {
-  encoding: 'utf-8'
-});
-// SHALLOW JSON FILE
-fs.writeFileSync(folderToWrite + 'shallow_' + finalDestination + '.json', JSON.stringify(shallowVulns, null, 2), {
+const finalJSON = {
+  deep: deepVulns,
+  shallow: shallowVulns
+}
+
+// WRITE FULL JSON FILE
+fs.writeFileSync(folderToWrite + finalDestination + '.json', JSON.stringify(finalJSON, null, 2), {
   encoding: 'utf-8'
 });
 
 // transform in CSV
 
-converter.json2csv(shallowVulns, (err, csv) => {
+converter.json2csv(shallowVulns.map(el => {el.CVE = (typeof el.CVE != "undefined" && el.CVE != null && el.CVE.length != null && el.CVE.length > 0) ? el.CVE.join(' - ') : 'N/A'; return el}), (err, csv) => {
   if (err) {
     throw err;
   }
@@ -166,7 +196,8 @@ deepVulns.forEach(element => {
       package_vuln_version: el.package.vulnerable_version,
       package_fix_version: el.package.fixed_version,
       mitigation: el.mitigation,
-      reference: el.reference
+      reference: el.reference,
+      CVE: (typeof el.CVE != "undefined" && el.CVE != null && el.CVE.length != null && el.CVE.length > 0) ? el.CVE.join(' - ') : 'N/A'
     })
   })
 });
@@ -178,3 +209,8 @@ converter.json2csv(deepCSVArray, (err, csv) => {
   // write CSV to a file
   fs.writeFileSync(folderToWrite + "deep_" + finalDestination + '.csv', csv);
 });
+
+
+
+const used = process.memoryUsage().heapUsed / 1024 / 1024;
+console.log(`The script uses approximately ${Math.round(used * 100) / 100} MB`);
