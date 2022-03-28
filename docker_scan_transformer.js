@@ -128,14 +128,6 @@ async function getBody(url) {
   return text
 }
 
-
-const betweenMarkers = (text, begin, end) => {
-  var firstChar = text.indexOf(begin) + begin.length;
-  var lastChar = text.indexOf(end);
-  var newText = text.substring(firstChar, lastChar);
-  return newText;
-}
-
 for(const url of dtrAllReferences) {
   const body = await getBody(url).catch(err => console.error("ERROR with this url -> " + url + ": ", err));
   dtrCVEs.push({CVE: [...new Set(body.match(/CVE-\d{4}-\d{4,7}/g))], reference: url, CVSS: (body.match(/data-snyk-test-score="(\d*\.?\d+)"/) || ['', "N/A"])[1]})
