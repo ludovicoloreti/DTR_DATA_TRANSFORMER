@@ -3,6 +3,8 @@ import fetch from 'node-fetch';
 import fs from "fs";
 import nReadlines from 'n-readlines';
 
+// ALL LATEST CVEs downlaod link https://cve.mitre.org/data/downloads/allitems.csv
+
 const args = process.argv.slice(2);
 function showMsg() {
   console.error("Input inserted: ", args, "\n");
@@ -14,6 +16,8 @@ function showMsg() {
 }
 const getFileFromIndex = (args.indexOf('-f') + 1) || (args.indexOf('-F') + 1) || (args.indexOf('--filename') + 1);
 const fileName = getFileFromIndex > 0 ? args[getFileFromIndex] : showMsg();
+const CVEurl = 'https://cve.circl.lu/api/cve/';
+
 try { var broadbandLines = new nReadlines(fileName); } catch (error) { console.error("There was an error during the file opening: ", error); process.exit(9) }
 
 const toSnakeCase = string => string.toLowerCase().replace(/ /g, '_');
@@ -33,7 +37,7 @@ while (currLine = broadbandLines.next()) {
   const line = currLine.toString('utf-8').trim();
   let match;
   if ((match = line.match(/^\S+ (Medium|Low|High|Critical) severity vulnerability found in (.+)/))) {
-    shallowVuln = { package: match[2], CVE: undefined, severity: match[1], CVSS: undefined };
+    shallowVuln = { package: match[2], CVE: undefined, severity: match[1], CVSS: undefined, snykCVSS: undefined };
     shallowVulns.push(shallowVuln);
   } else if ((match = line.match(/^(Description|Info|Introduced through|From): (.+)/))) {
     shallowVuln[toSnakeCase((match[1] === "Info" ? "reference" : match[1]))] = match[2];
@@ -72,6 +76,7 @@ while (currLine = broadbandLines.next()) {
               CVE: undefined,
               severity: vuln.severity,
               CVSS: undefined,
+              snykCVSS: undefined,
               mitigation: `Upgrade ${from} to ${to}`,
               reference: vuln.reference,
               fixable: true,
@@ -93,6 +98,7 @@ while (currLine = broadbandLines.next()) {
               CVE: undefined,
               severity: vuln.severity,
               CVSS: undefined,
+              snykCVSS: undefined,
               mitigation: 'N/A',
               reference: vuln.reference,
               fixable: false,
@@ -123,31 +129,43 @@ while (currLine = broadbandLines.next()) {
 const dtrAllReferences = [...new Set([...deepVulns.flatMap(el => el.vulnerabilities.map(vuln => vuln.reference)), ...shallowVulns.map(el => el.reference)])].filter(e => e).flatMap(e => e);
 let dtrCVEs = [];
 
-async function getBody(url) {
+async function getBody(url, json=false) {
   const response = await fetch(url,{
-      redirect: 'follow',
-      follow: 10,
+    redirect: 'follow',
+    follow: 10,
   })
-  const text = await response.text()
+  let text;
+  if (json) {
+    text = await response.json()
+  } else {
+    text = await response.text()
+  }
   return text
 }
 
 for(const url of dtrAllReferences) {
-  const body = await getBody(url).catch(err => console.error("ERROR with this url -> " + url + ": ", err));
-  dtrCVEs.push({CVE: [...new Set(body.match(/CVE-\d{4}-\d{4,7}/g))], reference: url, CVSS: (body.match(/data-snyk-test-score="(\d*\.?\d+)"/) || ['', "N/A"])[1]})
+  const body = await getBody(url).catch(err => console.error("(1) ERROR with this url -> " + url + ": ", err));
+  const cveRegex = [...new Set(body.match(/CVE-\d{4}-\d{4,7}/g))];
+  const snykCVSS = (body.match(/data-snyk-test-score="(\d*\.?\d+)"/) || ['', "N/A"])[1];
+  const cveBody = await getBody(CVEurl+cveRegex[0],true).catch(err => console.error("(2) ERROR with this url -> " + url + ": ", err));  
+  dtrCVEs.push({CVE: cveRegex[0] || 'N/A', reference: url, CVSS: cveBody?.cvss || 'N/A', snykCVSS: snykCVSS})
 }
+
+
 
 dtrCVEs.map(el => {
   deepVulns.map(deep => deep.vulnerabilities.map(d => {
     if (d.reference === el.reference) {
       d['CVE'] = el.CVE;
       d['CVSS'] = el.CVSS
+      d['snykCVSS'] = el.snykCVSS
     }
   }))
   shallowVulns.map(s => {
     if (s.reference === el.reference) {
       s['CVE'] = el.CVE
       s['CVSS'] = el.CVSS
+      s['snykCVSS'] = el.snykCVSS
     }
   })
 })
@@ -180,7 +198,7 @@ fs.writeFileSync(folderToWrite + finalDestination + '.json', JSON.stringify(fina
 
 // transform in CSV
 
-converter.json2csv(shallowVulns.map(el => {el.CVE = (typeof el.CVE != "undefined" && el.CVE != null && el.CVE.length != null && el.CVE.length > 0) ? el.CVE.join(' - ') : 'N/A'; return el}), (err, csv) => {
+converter.json2csv(shallowVulns, (err, csv) => {
   if (err) {
     throw err;
   }
@@ -195,7 +213,7 @@ deepVulns.forEach(element => {
   element.vulnerabilities.forEach(el => {
     deepCSVArray.push({
       target_file: element.target_file,
-      CVE: (typeof el.CVE != "undefined" && el.CVE != null && el.CVE.length != null && el.CVE.length > 0) ? el.CVE.join(' - ') : 'N/A',
+      CVE: el.CVE || 'N/A',
       CVSS: el.CVSS || 'N/A',
       fixable: el.fixable,
       vulnerability_name: el.name,
