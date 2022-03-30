@@ -193,7 +193,7 @@ for (const el of remainings) {
   console.log(`HTTP.GET\t( ${el?.url || '[something wrong]'} )\n`)
   counter++;
   const url = el.url;
-  const cveBody = await getBody(nistComposedUrl,true).catch(err => console.error("(3) ERROR with this url -> " + url + ": ", err));
+  const cveBody = await getBody(url,true).catch(err => console.error("(3) ERROR with this url -> " + url + ": ", err));
   dtrCVEs.push({
     CVE: el?.CVE || 'N/A', 
     reference: el?.reference, 
