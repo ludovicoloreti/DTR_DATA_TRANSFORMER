@@ -176,20 +176,20 @@ for(const url of dtrAllReferences) {
       CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
       snykCVSS: snykCVSS
     })
-    await new Promise(resolve => setTimeout(resolve, 1050));
+    await new Promise(resolve => setTimeout(resolve, 660));
   }   
 }
 
 
 await new Promise(resolve => setTimeout(resolve, 1000));
-console.log(`#####################################################################\nNow analyze remainings urls\n#####################################################################\n\n`);
+console.log(`#####################################################################\n\tNow analyze remainings urls\n#####################################################################\n\n`);
 counter = 1;
 size = remainings.length;
 await new Promise(resolve => setTimeout(resolve, 1000));
 
 
 for (const el of remainings) {
-  console.log(`(${counter} / ${size}) Analyzing the CVE ${el?.CVE || '[something wrong]'} reference url: ${el?.reference || '[something wrong]'};`);
+  console.log(`(${counter} / ${size}) Analyzing the ${el?.CVE || '[something wrong]'} with reference url: ${el?.reference || '[something wrong]'};`);
   console.log(`HTTP.GET\t( ${el?.url || '[something wrong]'} )\n`)
   counter++;
   const url = el.url;
