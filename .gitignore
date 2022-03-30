@@ -1,5 +1,6 @@
 # exclude everything
 export/*
+.DS_Store
 
 # exception to the rule
 !export/.gitkeep 
