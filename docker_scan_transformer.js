@@ -135,8 +135,8 @@ const dtrAllReferences = [...new Set([...deepVulns.flatMap(el => el.vulnerabilit
 let dtrCVEs = [];
 let remainings = [];
 
-async function getBody(url, json=false) {
-  const response = await fetch(url,{
+async function getBody(url, json = false) {
+  const response = await fetch(url, {
     redirect: 'follow',
     follow: 10,
   })
@@ -152,32 +152,32 @@ async function getBody(url, json=false) {
 let counter = 1;
 let size = dtrAllReferences.length;
 
-for(const url of dtrAllReferences) {
+for (const url of dtrAllReferences) {
   console.log(`(${counter} / ${size}) Analyzing this reference url: ${url}`);
   counter++;
   const body = await getBody(url).catch(err => console.error("(1) ERROR with this url -> " + url + ": ", err));
   // const cveRegex = [...new Set(body.match(/CVE-\d{4}-\d{4,7}/g))]; // THEN USE cveRegex[0] as variable
   const cveRegex = (body.match(/target=\"_blank\" id="(CVE-\d{4}-\d{4,7})"/) || ['', "N/A"])[1];
   const snykCVSS = (body.match(/data-snyk-test-score="(\d*\.?\d+)"/) || ['', "N/A"])[1];
-  const nistComposedUrl = CVEurl+cveRegex+'?apiKey='+apiKey;
+  const nistComposedUrl = CVEurl + cveRegex + '?apiKey=' + apiKey;
   if (cveRegex !== 'N/A' && cveRegex !== '') {
     console.log(`\tGot CVE id: ${cveRegex}.\n\tNow analyzing this url: ${nistComposedUrl}\n`)
-    const cveBody = await getBody(nistComposedUrl,true).catch(err => {
+    const cveBody = await getBody(nistComposedUrl, true).catch(err => {
       console.error("(2) ERROR with this url -> " + nistComposedUrl + ": ", err)
       if (cveRegex) {
         console.log(`\t>\tAdding ${cveRegex} to the remainings list, 'cause it's causing troubles.\n`)
-        remainings.push({url: nistComposedUrl, CVE: cveRegex,  reference: url, snykCVSS: snykCVSS})
+        remainings.push({ url: nistComposedUrl, CVE: cveRegex, reference: url, snykCVSS: snykCVSS })
       }
-    });  
+    });
     dtrCVEs.push({
-      CVE: cveRegex || 'N/A', 
-      reference: url, 
+      CVE: cveRegex || 'N/A',
+      reference: url,
       CVSS3: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV3?.cvssV3?.baseScore || 'N/A',
-      CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
+      CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A',
       snykCVSS: snykCVSS
     })
     await new Promise(resolve => setTimeout(resolve, 660));
-  }   
+  }
 }
 
 
@@ -185,23 +185,24 @@ await new Promise(resolve => setTimeout(resolve, 1000));
 console.log(`#####################################################################\n\tNow analyze remainings urls\n#####################################################################\n\n`);
 counter = 1;
 size = remainings.length;
-await new Promise(resolve => setTimeout(resolve, 1000));
 
-
-for (const el of remainings) {
-  console.log(`(${counter} / ${size}) Analyzing the ${el?.CVE || '[something wrong]'} with reference url: ${el?.reference || '[something wrong]'};`);
-  console.log(`HTTP.GET\t( ${el?.url || '[something wrong]'} )\n`)
-  counter++;
-  const url = el.url;
-  const cveBody = await getBody(url,true).catch(err => console.error("(3) ERROR with this url -> " + url + ": ", err));
-  dtrCVEs.push({
-    CVE: el?.CVE || 'N/A', 
-    reference: el?.reference, 
-    CVSS3: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV3?.cvssV3?.baseScore || 'N/A',
-    CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
-    snykCVSS: el?.snykCVSS || 'N/A'
-  })
+if (size > 0) {
   await new Promise(resolve => setTimeout(resolve, 1000));
+  for (const el of remainings) {
+    console.log(`(${counter} / ${size}) Analyzing the ${el?.CVE || '[something wrong]'} with reference url: ${el?.reference || '[something wrong]'};`);
+    console.log(`HTTP.GET\t( ${el?.url || '[something wrong]'} )\n`)
+    counter++;
+    const url = el.url;
+    const cveBody = await getBody(url, true).catch(err => console.error("(3) ERROR with this url -> " + url + ": ", err));
+    dtrCVEs.push({
+      CVE: el?.CVE || 'N/A',
+      reference: el?.reference,
+      CVSS3: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV3?.cvssV3?.baseScore || 'N/A',
+      CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A',
+      snykCVSS: el?.snykCVSS || 'N/A'
+    })
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
 }
 
 
@@ -225,15 +226,15 @@ dtrCVEs.map(el => {
 })
 
 // Order arrays by vuln severity
-const keyOrder ={
+const keyOrder = {
   "Critical": 1,
   "High": 2,
   "Medium": 3,
   "Low": 4,
   default: Infinity
 };
-deepVulns.map(el => el.vulnerabilities.sort((a,b) => (keyOrder[a.severity] || order.default) - (keyOrder[b.severity] || order.default)));
-shallowVulns.sort((a,b) => (keyOrder[a.severity] || order.default) - (keyOrder[b.severity] || order.default));
+deepVulns.map(el => el.vulnerabilities.sort((a, b) => (keyOrder[a.severity] || order.default) - (keyOrder[b.severity] || order.default)));
+shallowVulns.sort((a, b) => (keyOrder[a.severity] || order.default) - (keyOrder[b.severity] || order.default));
 
 // Write JSON to files *.json
 const folderToWrite = "./export/";
