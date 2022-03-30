@@ -177,17 +177,7 @@ for(const url of dtrAllReferences) {
       snykCVSS: snykCVSS
     })
     await new Promise(resolve => setTimeout(resolve, 1050));
-  } else {
-    dtrCVEs.push({
-      CVE: 'N/A', 
-      reference: url, 
-      CVSS3: 'N/A',
-      CVSS2: 'N/A', 
-      snykCVSS: snykCVSS || 'N/A'
-    })
-  }
-  
-  
+  }   
 }
 
 
