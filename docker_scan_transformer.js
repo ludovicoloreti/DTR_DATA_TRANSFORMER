@@ -169,15 +169,24 @@ for(const url of dtrAllReferences) {
         remainings.push({url: nistComposedUrl, CVE: cveRegex,  reference: url, snykCVSS: snykCVSS})
       }
     });  
+    dtrCVEs.push({
+      CVE: cveRegex || 'N/A', 
+      reference: url, 
+      CVSS3: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV3?.cvssV3?.baseScore || 'N/A',
+      CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
+      snykCVSS: snykCVSS
+    })
     await new Promise(resolve => setTimeout(resolve, 1050));
+  } else {
+    dtrCVEs.push({
+      CVE: 'N/A', 
+      reference: url, 
+      CVSS3: 'N/A',
+      CVSS2: 'N/A', 
+      snykCVSS: snykCVSS || 'N/A'
+    })
   }
-  dtrCVEs.push({
-    CVE: cveRegex || 'N/A', 
-    reference: url, 
-    CVSS3: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV3?.cvssV3?.baseScore || 'N/A',
-    CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
-    snykCVSS: snykCVSS
-  })
+  
   
 }
 
