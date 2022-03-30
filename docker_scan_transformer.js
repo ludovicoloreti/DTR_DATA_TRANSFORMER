@@ -133,6 +133,7 @@ while (currLine = broadbandLines.next()) {
 // Add CVE to all vulns
 const dtrAllReferences = [...new Set([...deepVulns.flatMap(el => el.vulnerabilities.map(vuln => vuln.reference)), ...shallowVulns.map(el => el.reference)])].filter(e => e).flatMap(e => e);
 let dtrCVEs = [];
+let remainings = [];
 
 async function getBody(url, json=false) {
   const response = await fetch(url,{
@@ -153,7 +154,13 @@ for(const url of dtrAllReferences) {
   // const cveRegex = [...new Set(body.match(/CVE-\d{4}-\d{4,7}/g))]; // THEN USE cveRegex[0] as variable
   const cveRegex = (body.match(/target=\"_blank\" id="(CVE-\d{4}-\d{4,7})"/) || ['', "N/A"])[1];
   const snykCVSS = (body.match(/data-snyk-test-score="(\d*\.?\d+)"/) || ['', "N/A"])[1];
-  const cveBody = await getBody(CVEurl+cveRegex+'?apiKey='+apiKey,true).catch(err => console.error("(2) ERROR with this url -> " + url + ": ", err));  
+  const nistComposedUrl = CVEurl+cveRegex+'?apiKey='+apiKey;
+  const cveBody = await getBody(nistComposedUrl,true).catch(err => {
+    console.error("(2) ERROR with this url -> " + nistComposedUrl + ": ", err)
+    if (cveRegex) {
+      remainings.push({url: nistComposedUrl, CVE: cveRegex,  reference: url, snykCVSS: snykCVSS})
+    }
+  });  
   dtrCVEs.push({
     CVE: cveRegex || 'N/A', 
     reference: url, 
@@ -161,9 +168,25 @@ for(const url of dtrAllReferences) {
     CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
     snykCVSS: snykCVSS
   })
-  await new Promise(resolve => setTimeout(resolve, 700));
+  await new Promise(resolve => setTimeout(resolve, 710));
 }
 
+
+await new Promise(resolve => setTimeout(resolve, 2000));
+
+
+for (const el of remainings) {
+  const url = el.url;
+  const cveBody = await getBody(nistComposedUrl,true).catch(err => console.error("(3) ERROR with this url -> " + url + ": ", err));
+  dtrCVEs.push({
+    CVE: el?.CVE || 'N/A', 
+    reference: el?.reference, 
+    CVSS3: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV3?.cvssV3?.baseScore || 'N/A',
+    CVSS2: cveBody?.result?.CVE_Items[0]?.impact?.baseMetricV2?.cvssV2?.baseScore || 'N/A', 
+    snykCVSS: el?.snykCVSS || 'N/A'
+  })
+  await new Promise(resolve => setTimeout(resolve, 1000));
+}
 
 
 dtrCVEs.map(el => {
@@ -210,6 +233,7 @@ const finalJSON = {
 fs.writeFileSync(folderToWrite + finalDestination + '.json', JSON.stringify(finalJSON, null, 2), {
   encoding: 'utf-8'
 });
+
 
 // transform in CSV
 
