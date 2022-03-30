@@ -160,8 +160,8 @@ for(const url of dtrAllReferences) {
   const cveRegex = (body.match(/target=\"_blank\" id="(CVE-\d{4}-\d{4,7})"/) || ['', "N/A"])[1];
   const snykCVSS = (body.match(/data-snyk-test-score="(\d*\.?\d+)"/) || ['', "N/A"])[1];
   const nistComposedUrl = CVEurl+cveRegex+'?apiKey='+apiKey;
-  console.log(`\tGot CVE id: ${cveRegex}.\n\tNow analyzing this url: ${nistComposedUrl}\n`)
   if (cveRegex !== 'N/A' && cveRegex !== '') {
+    console.log(`\tGot CVE id: ${cveRegex}.\n\tNow analyzing this url: ${nistComposedUrl}\n`)
     const cveBody = await getBody(nistComposedUrl,true).catch(err => {
       console.error("(2) ERROR with this url -> " + nistComposedUrl + ": ", err)
       if (cveRegex) {
