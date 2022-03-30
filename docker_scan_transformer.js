@@ -203,6 +203,8 @@ if (size > 0) {
     })
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
+} else {
+  console.log('Nothing remaining!')
 }
 
 
